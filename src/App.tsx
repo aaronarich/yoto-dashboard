@@ -10,6 +10,7 @@ export default function App() {
     const [devices, setDevices] = useState<any[]>([]);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>(Notification.permission);
     const [debugInfo, setDebugInfo] = useState<string>('');
+    const [currentView, setCurrentView] = useState<'dashboard' | 'settings'>('dashboard');
 
     console.log('App state:', { isAuthenticated, loading });
 
@@ -209,55 +210,59 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] p-6 md:p-12 text-[var(--text-primary)]">
-            <header className="flex justify-between items-center mb-12">
-                <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <span className="material-symbols-outlined text-[var(--brand-primary)] text-4xl">analytics</span>
-                        Yoto Dashboard
-                    </h1>
-                    <p className="text-[var(--text-secondary)] text-sm ml-12">Live device monitoring</p>
-                </div>
-                <div className="flex gap-4">
-                    {notifPermission !== 'granted' && (
+        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] pb-32 md:pb-0">
+            {/* Header - simplified for mobile */}
+            <header className="p-4 md:p-12 pb-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
+                            <span className="material-symbols-outlined text-[var(--brand-primary)] text-3xl md:text-4xl">analytics</span>
+                            Yoto Dashboard
+                        </h1>
+                        <p className="text-[var(--text-secondary)] text-xs md:text-sm ml-9 md:ml-12 mt-1">Live device monitoring</p>
+                    </div>
+                    {/* Desktop action buttons */}
+                    <div className="hidden md:flex gap-4">
+                        {notifPermission !== 'granted' && (
+                            <button
+                                onClick={requestNotificationPermission}
+                                className="md-button bg-[var(--brand-primary)] text-white flex items-center gap-2 hover:opacity-90"
+                            >
+                                <span className="material-symbols-outlined">notifications</span>
+                                Enable Alerts
+                            </button>
+                        )}
+                        {notifPermission === 'granted' && (
+                            <button
+                                onClick={sendTestNotification}
+                                className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] border border-indigo-200 flex items-center gap-2 hover:bg-indigo-50"
+                            >
+                                <span className="material-symbols-outlined">notifications_active</span>
+                                Test Alert
+                            </button>
+                        )}
                         <button
-                            onClick={requestNotificationPermission}
-                            className="md-button bg-[var(--brand-primary)] text-white flex items-center gap-2 hover:opacity-90"
+                            onClick={triggerBackgroundUpdate}
+                            className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
+                            title="Manually trigger Service Worker background update"
                         >
-                            <span className="material-symbols-outlined">notifications</span>
-                            Enable Alerts
+                            <span className="material-symbols-outlined">sync</span>
+                            Sync (SW)
                         </button>
-                    )}
-                    {notifPermission === 'granted' && (
                         <button
-                            onClick={sendTestNotification}
-                            className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] border border-indigo-200 flex items-center gap-2 hover:bg-indigo-50"
+                            onClick={() => refreshData()}
+                            className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
                         >
-                            <span className="material-symbols-outlined">notifications_active</span>
-                            Test Alert
+                            <History size={18} />
+                            Refresh
                         </button>
-                    )}
-                    <button
-                        onClick={triggerBackgroundUpdate}
-                        className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
-                        title="Manually trigger Service Worker background update"
-                    >
-                        <span className="material-symbols-outlined">sync</span>
-                        Sync (SW)
-                    </button>
-                    <button
-                        onClick={() => refreshData()}
-                        className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
-                    >
-                        <History size={18} />
-                        Refresh
-                    </button>
-                    <button
-                        onClick={logout}
-                        className="md-button border border-red-200 text-red-600 flex items-center gap-2 hover:bg-red-50"
-                    >
-                        Logout
-                    </button>
+                        <button
+                            onClick={logout}
+                            className="md-button border border-red-200 text-red-600 flex items-center gap-2 hover:bg-red-50"
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </div>
                 {debugInfo && (
                     <div className="mt-4 p-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs rounded font-mono">
@@ -266,87 +271,178 @@ export default function App() {
                 )}
             </header>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {devices.map(device => (
-                    <div key={device.id || device.deviceId} className="md-card p-6 flex flex-col justify-between border border-transparent hover:border-[var(--card-border)]">
-                        <div>
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${device.status.online ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        <span className="material-symbols-outlined text-2xl">
-                                            {device.status.online ? 'sensors' : 'sensors_off'}
-                                        </span>
+            {/* Main content */}
+            {currentView === 'dashboard' ? (
+                <div className="px-4 md:px-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {devices.map(device => (
+                        <div key={device.id || device.deviceId} className="md-card p-6 flex flex-col justify-between border border-transparent hover:border-[var(--card-border)]">
+                            <div>
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-full ${device.status.online ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            <span className="material-symbols-outlined text-2xl">
+                                                {device.status.online ? 'sensors' : 'sensors_off'}
+                                            </span>
+                                        </div>
+                                        <h2 className="text-xl font-bold">
+                                            {(device.name || 'Unknown Player').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                                        </h2>
                                     </div>
-                                    <h2 className="text-xl font-bold">
-                                        {(device.name || 'Unknown Player').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-                                    </h2>
-                                </div>
-                                <div className={device.status.online ? 'text-green-500' : 'text-red-500'}>
-                                    <div className={`w-2 h-2 rounded-full ${device.status.online ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
-                                        <span className="material-symbols-outlined text-lg">schedule</span>
-                                        <span>Last Seen</span>
+                                    <div className={device.status.online ? 'text-green-500' : 'text-red-500'}>
+                                        <div className={`w-2 h-2 rounded-full ${device.status.online ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                                     </div>
-                                    <span className="text-[var(--text-primary)] font-medium text-sm">
-                                        {formatRelativeTime(device.status.lastSeen)}
-                                    </span>
                                 </div>
 
-                                <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
-                                        <span className="material-symbols-outlined text-lg">{device.status.isCharging ? 'battery_charging_full' : getBatteryIconName(device.status.batteryLevel)}</span>
-                                        <span>Battery {device.status.isCharging && '(Charging)'}</span>
-                                    </div>
-                                    <span className={`font-bold text-lg ${device.status.batteryLevel != null && device.status.batteryLevel < 20 && !device.status.isCharging ? 'text-red-600' : 'text-[var(--text-primary)]'}`}>
-                                        {device.status.batteryLevel != null ? `${device.status.batteryLevel}%` : '---'}
-                                    </span>
-                                </div>
-
-                                {device.status.online && device.status.wifiSsid && (
+                                <div className="space-y-4">
                                     <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
-                                            <span className="material-symbols-outlined text-lg">wifi</span>
-                                            <span>Network</span>
+                                            <span className="material-symbols-outlined text-lg">schedule</span>
+                                            <span>Last Seen</span>
                                         </div>
-                                        <span className="text-[var(--text-primary)] font-bold text-xs truncate max-w-[120px]">
-                                            {device.status.wifiSsid}
+                                        <span className="text-[var(--text-primary)] font-medium text-sm">
+                                            {formatRelativeTime(device.status.lastSeen)}
                                         </span>
                                     </div>
-                                )}
 
-                                {device.status.activeCard && device.status.activeCard !== 'none' && (
                                     <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
-                                            <span className="material-symbols-outlined text-lg">style</span>
-                                            <span>Inserted Card</span>
+                                            <span className="material-symbols-outlined text-lg">{device.status.isCharging ? 'battery_charging_full' : getBatteryIconName(device.status.batteryLevel)}</span>
+                                            <span>Battery {device.status.isCharging && '(Charging)'}</span>
                                         </div>
-                                        <span className="text-[var(--text-primary)] font-bold text-xs truncate max-w-[120px]">
-                                            {device.status.activeCard}
+                                        <span className={`font-bold text-lg ${device.status.batteryLevel != null && device.status.batteryLevel < 20 && !device.status.isCharging ? 'text-red-600' : 'text-[var(--text-primary)]'}`}>
+                                            {device.status.batteryLevel != null ? `${device.status.batteryLevel}%` : '---'}
                                         </span>
                                     </div>
-                                )}
 
-                                {device.status.playbackStatus && (
-                                    <div className="mt-4 p-4 rounded-2xl bg-[var(--md-surface-1)] border border-indigo-100/50">
-                                        <div className="flex items-center gap-2 text-indigo-600 text-[10px] font-bold uppercase tracking-wider mb-2">
-                                            <span className="material-symbols-outlined text-sm">pumping_station</span>
-                                            Currently Playing
+                                    {device.status.online && device.status.wifiSsid && (
+                                        <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
+                                                <span className="material-symbols-outlined text-lg">wifi</span>
+                                                <span>Network</span>
+                                            </div>
+                                            <span className="text-[var(--text-primary)] font-bold text-xs truncate max-w-[120px]">
+                                                {device.status.wifiSsid}
+                                            </span>
                                         </div>
-                                        <p className="text-[var(--text-primary)] font-medium text-sm leading-snug truncate">
-                                            {device.status.playbackStatus.title || 'No Track Name'}
-                                        </p>
-                                    </div>
-                                )}
+                                    )}
+
+                                    {device.status.activeCard && device.status.activeCard !== 'none' && (
+                                        <div className="bg-[var(--bg-secondary)] rounded-xl p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
+                                                <span className="material-symbols-outlined text-lg">style</span>
+                                                <span>Inserted Card</span>
+                                            </div>
+                                            <span className="text-[var(--text-primary)] font-bold text-xs truncate max-w-[120px]">
+                                                {device.status.activeCard}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {device.status.playbackStatus && (
+                                        <div className="mt-4 p-4 rounded-2xl bg-[var(--md-surface-1)] border border-indigo-100/50">
+                                            <div className="flex items-center gap-2 text-indigo-600 text-[10px] font-bold uppercase tracking-wider mb-2">
+                                                <span className="material-symbols-outlined text-sm">pumping_station</span>
+                                                Currently Playing
+                                            </div>
+                                            <p className="text-[var(--text-primary)] font-medium text-sm leading-snug truncate">
+                                                {device.status.playbackStatus.title || 'No Track Name'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
+                    ))}
+                </div>
+            ) : (
+                /* Settings View */
+                <div className="px-4 md:px-12 max-w-2xl mx-auto">
+                    <div className="md-card p-6 space-y-6">
+                        <h2 className="text-2xl font-bold mb-6">Settings</h2>
+
+                        {/* Notifications Section */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Notifications</h3>
+                            {notifPermission !== 'granted' && (
+                                <button
+                                    onClick={requestNotificationPermission}
+                                    className="w-full md-button bg-[var(--brand-primary)] text-white flex items-center justify-center gap-2 hover:opacity-90 py-3"
+                                >
+                                    <span className="material-symbols-outlined">notifications</span>
+                                    Enable Alerts
+                                </button>
+                            )}
+                            {notifPermission === 'granted' && (
+                                <button
+                                    onClick={sendTestNotification}
+                                    className="w-full md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] border border-indigo-200 flex items-center justify-center gap-2 hover:bg-indigo-50 py-3"
+                                >
+                                    <span className="material-symbols-outlined">notifications_active</span>
+                                    Test Alert
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Data Management Section */}
+                        <div className="space-y-4 pt-4 border-t border-[var(--card-border)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Data Management</h3>
+                            <button
+                                onClick={triggerBackgroundUpdate}
+                                className="w-full md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center justify-center gap-2 hover:bg-[var(--md-surface-1)] py-3"
+                                title="Manually trigger Service Worker background update"
+                            >
+                                <span className="material-symbols-outlined">sync</span>
+                                Sync (Service Worker)
+                            </button>
+                            <button
+                                onClick={() => refreshData()}
+                                className="w-full md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center justify-center gap-2 hover:bg-[var(--md-surface-1)] py-3"
+                            >
+                                <History size={18} />
+                                Refresh Data
+                            </button>
+                        </div>
+
+                        {/* Account Section */}
+                        <div className="space-y-4 pt-4 border-t border-[var(--card-border)]">
+                            <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Account</h3>
+                            <button
+                                onClick={logout}
+                                className="w-full md-button border border-red-200 text-red-600 flex items-center justify-center gap-2 hover:bg-red-50 py-3"
+                            >
+                                <span className="material-symbols-outlined">logout</span>
+                                Logout
+                            </button>
+                        </div>
                     </div>
-                ))}
-            </div>
+                </div>
+            )}
+
+            {/* Fixed bottom navigation for mobile */}
+            <nav className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--card-border)] md:hidden shadow-lg">
+                <div className="grid grid-cols-2 gap-0">
+                    <button
+                        onClick={() => setCurrentView('dashboard')}
+                        className={`flex flex-col items-center justify-center py-3 gap-1 transition-colors ${currentView === 'dashboard'
+                                ? 'text-[var(--brand-primary)] bg-[var(--md-surface-1)]'
+                                : 'text-[var(--text-secondary)] hover:bg-[var(--md-surface-1)]'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined text-2xl">dashboard</span>
+                        <span className="text-xs font-medium">Dashboard</span>
+                    </button>
+                    <button
+                        onClick={() => setCurrentView('settings')}
+                        className={`flex flex-col items-center justify-center py-3 gap-1 transition-colors ${currentView === 'settings'
+                                ? 'text-[var(--brand-primary)] bg-[var(--md-surface-1)]'
+                                : 'text-[var(--text-secondary)] hover:bg-[var(--md-surface-1)]'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined text-2xl">settings</span>
+                        <span className="text-xs font-medium">Settings</span>
+                    </button>
+                </div>
+            </nav>
         </div>
     );
 }
