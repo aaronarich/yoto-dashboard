@@ -1,4 +1,4 @@
-const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const isLocal = typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname);
 export const YOTO_API_BASE = isLocal ? '/api' : 'https://api.yotoplay.com';
 console.log('Yoto API Base:', YOTO_API_BASE);
 

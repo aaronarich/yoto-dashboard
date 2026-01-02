@@ -130,7 +130,7 @@ export default function App() {
     };
 
     const sendTestNotification = async () => {
-        setDebugInfo('Triggering test...');
+        setDebugInfo('Triggering test notification...');
         if (!window.isSecureContext) {
             setDebugInfo('Error: Not in a secure context (HTTPS/localhost). Notifications will not work.');
             alert('Service Workers and Notifications require HTTPS or localhost.');
@@ -139,19 +139,11 @@ export default function App() {
 
         if ('serviceWorker' in navigator) {
             try {
-                setDebugInfo('Waiting for Service Worker ready...');
                 const registration = await navigator.serviceWorker.ready;
-                setDebugInfo('Service Worker ready! Sending...');
-
-                if (!registration.showNotification) {
-                    setDebugInfo('Error: registration.showNotification is not available.');
-                    return;
-                }
-
                 await registration.showNotification("Test Alert 🧪", {
                     body: "This is a test notification from your Yoto Tracker.",
                     icon: "/icons/icon-192x192.png",
-                    tag: "test-notification",
+                    tag: `test-notification-${Date.now()}`,
                     badge: "/icons/icon-192x192.png"
                 });
                 setDebugInfo('Notification triggered successfully!');
@@ -160,7 +152,26 @@ export default function App() {
                 setDebugInfo(`Error: ${err.message || 'Unknown error'}`);
             }
         } else {
-            setDebugInfo('Error: Service worker not supported in this browser.');
+            setDebugInfo('Error: Service worker not supported.');
+        }
+    };
+
+    const triggerBackgroundUpdate = async () => {
+        setDebugInfo('Triggering background update via SW message...');
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration.active) {
+                    registration.active.postMessage({ action: 'update-status' });
+                    setDebugInfo('Message sent to Service Worker. Check console for [SW] logs.');
+                } else {
+                    setDebugInfo('Error: Service worker not active.');
+                }
+            } catch (err: any) {
+                setDebugInfo(`Error: ${err.message}`);
+            }
+        } else {
+            setDebugInfo('Error: Service worker not supported.');
         }
     };
 
@@ -226,6 +237,14 @@ export default function App() {
                             Test Alert
                         </button>
                     )}
+                    <button
+                        onClick={triggerBackgroundUpdate}
+                        className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
+                        title="Manually trigger Service Worker background update"
+                    >
+                        <span className="material-symbols-outlined">sync</span>
+                        Sync (SW)
+                    </button>
                     <button
                         onClick={() => refreshData()}
                         className="md-button bg-[var(--md-surface-2)] text-[var(--text-primary)] flex items-center gap-2 hover:bg-[var(--md-surface-1)]"
